@@ -21,8 +21,7 @@ $string['add_assign'] = 'Enable GrammarXL';
 $string['enable_grading'] = 'Enable GrammarXL grading';
 $string['save'] = 'Save settings';
 $string['assignment'] = 'Select assignment';
-$string[''] = '';
-$string[''] = '';
+$string['success'] = 'Assignment setting has been updated successfully';
 $string[''] = '';
 
 

@@ -7,9 +7,10 @@
  */
 
 require_once('../../config.php');
+require_once('./lib.php');
 require_once('add_assign_form.php');
 $id = required_param('id', PARAM_INT);
-$course = get_course($id);
+list ($course, $cm) = get_course_and_cm_from_cmid($id, 'assign');
 $PAGE->set_context(context_course::instance($course->id));
 require_login($course->id);
 $PAGE->set_title("Enable GrammerXL grading");
@@ -17,7 +18,15 @@ $PAGE->set_heading("Enable GrammerXL grading");
 
 $PAGE->set_url(new moodle_url('/local/grammarxl/add_assign.php',array('id'=>$course->id)));
 $PAGE->set_pagelayout('standard');
-echo $OUTPUT->header();
-$form = new add_assign_form(null,array('courseid'=>$course->id));
-$form->display();
+
+$form = new add_assign_form(null,array('cmid'=>$id,'assignid'=>$cm->instance));
+
+if($data = $form->get_data() ){
+   enable_grammar_grading($data);
+    redirect($CFG->wwwroot.'/mod/assign/view.php?id='.$id, get_string('success','local_grammarxl'), null, \core\output\notification::NOTIFY_SUCCESS);
+   
+}else{
+ echo $OUTPUT->header();
+  $form->display();  
+}
 echo $OUTPUT->footer();

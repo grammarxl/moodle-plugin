@@ -5,25 +5,30 @@
  * @copyright 2019 abhishekumarai1@gmai.com  {@link http://moodle.com}
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
 defined('MOODLE_INTERNAL') || die;
-require_once($CFG->dirroot."/mod/assign/locallib.php");
+require_once($CFG->dirroot . "/mod/assign/locallib.php");
+
 function grade() {
     global $DB;
     $site = get_site();
     $start_time = time();
+    $grammarxl_assign = $DB->get_records('grammarxl_assign',array('status'=>1),null,'assignment');
     $config = get_config('local_grammarxl');
-    $last_grade_time =  isset($config->last_grade_success_time)?$config->last_grade_success_time:0;
+    $last_grade_time = 0;// isset($config->last_grade_success_time) ? $config->last_grade_success_time : 0;
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $config->hostname);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
     $sql = "SELECT * FROM {assign_submission} WHERE status=:status AND timemodified> :timemodified ";
     $assign_submissions = $DB->get_records_sql($sql, array('status' => 'submitted', 'timemodified' => $last_grade_time));
-    if(empty($assign_submissions)){
+    if (empty($assign_submissions)) {
         echo "No new assignment submitted forgrading \n";
     }
     foreach ($assign_submissions as $assign_submission) {
+        if(!in_array($assign_submission->assignment, $grammarxl_assign)){
+            mtrace("Grading not enable in assignment $assign_submission->assignment");
+            continue;  
+        }
         echo "Grading assignment subission id:$assign_submission->id \n";
         $assign = $DB->get_record('assign', array('id' => $assign_submission->assignment), '*', MUST_EXIST);
         list($course, $cm) = get_course_and_cm_from_instance($assign, 'assign');
@@ -33,7 +38,7 @@ function grade() {
         foreach ($files as $file) {
             if ($file->get_filesize() <= 0) {
                 continue;
-                }
+            }
             $params = get_curl_params($assign_submission, $course, $config, $site);
 
             $file_path = get_file_real_path($file->get_contenthash());
@@ -48,7 +53,7 @@ function grade() {
                 echo "Error in curl request";
                 continue;
             }
-           $grammarxl_grade = json_decode($response);
+            $grammarxl_grade = json_decode($response);
             if (isset($grammarxl_grade) && isset($grammarxl_grade->scoreHistoryModel) && isset($grammarxl_grade->scoreHistoryModel->totalScore)) {
                 $assign_grades = new assign($context, $cm, $course);
                 $grade_data = new stdClass();
@@ -56,8 +61,8 @@ function grade() {
                 $grade_data->grade = $grammarxl_grade->scoreHistoryModel->totalScore;
                 $grade_data->assignfeedbackcomments_editor = array('text' => '', 'format' => '', 'itemid' => '');
                 $assign_grades->save_grade($assign_submission->userid, $grade_data);
-                save_response($course, $assign_submission, $response,$grammarxl_grade);
-            }else{
+                save_response($course, $assign_submission, $response, $grammarxl_grade);
+            } else {
                 echo "Error in grade processing $error";
             }
             echo "Assignment submission id:$assign_submission->id compltetes here\n";
@@ -102,7 +107,7 @@ function get_file_real_path($filepathhash) {
     return $file_real_path;
 }
 
-function save_response($course, $assign_submission, $response,$grammarxl_response) {
+function save_response($course, $assign_submission, $response, $grammarxl_response) {
     global $DB;
     $grammarxl_grades = new stdClass();
     $grammarxl_grades->grade_response = $response;
@@ -125,25 +130,29 @@ function local_grammarxl_grade_assign() {
 
 function local_grammarxl_extend_settings_navigation($settingsnav, $context) {
     global $CFG, $PAGE;
-    
+
     // Only add this settings item on non-site course pages.
     if (!$PAGE->course or $PAGE->course->id == 1) {
         return;
     }
-  
-
-   
- 
-    if ($settingnode = $settingsnav->find('courseadmin', navigation_node::TYPE_COURSE)) {
+    $current_page_url = new moodle_url('/mod/assign/view.php', array());
+    if (!$PAGE->url->compare($current_page_url, URL_MATCH_BASE)) {
+        return;
+    }
+    if (!has_capability('moodle/course:manageactivities', $context)) {
+        return;
+    }
+    // print_object($settingsnav->find('modulesettings',navigation_node::TYPE_SETTING));
+    if ($settingnode = $settingsnav->find('modulesettings', navigation_node::TYPE_SETTING)) {
         $add_assign = get_string('add_assign', 'local_grammarxl');
-        $url = new moodle_url('/local/grammarxl/add_assign.php', array('id' => $PAGE->course->id));
+        $url = new moodle_url('/local/grammarxl/add_assign.php', array('id' => $PAGE->cm->id));
         $foonode = navigation_node::create(
-            $add_assign,
-            $url,
-            navigation_node::NODETYPE_LEAF,
-            'local_grammarxl',
-            'local_grammarxl',
-            new pix_icon('t/addcontact', $add_assign)
+                        $add_assign,
+                        $url,
+                        navigation_node::NODETYPE_LEAF,
+                        'local_grammarxl',
+                        'local_grammarxl',
+                        new pix_icon('i/navigationitem', $add_assign)
         );
         if ($PAGE->url->compare($url, URL_MATCH_BASE)) {
             $foonode->make_active();
@@ -152,29 +161,54 @@ function local_grammarxl_extend_settings_navigation($settingsnav, $context) {
     }
 }
 
-
 function local_grammarxl_extend_navigation(global_navigation $navigation) {
     global $CFG, $PAGE;
-    
+
     $url = new moodle_url('/mod/assign/view.php');
-    if($PAGE->url->compare($url, URL_MATCH_BASE)){
-       
+    if (!$PAGE->url->compare($url, URL_MATCH_BASE)) {
+       return; 
     }
-    
+
     if ($home = $navigation->find('home', global_navigation::TYPE_SETTING)) {
         $strfoo = get_string('grade', 'local_grammarxl');
         $url = new moodle_url('/local/grammarxl/view.php', array('id' => $PAGE->course->id));
         $foonode = navigation_node::create(
-            $strfoo,
-            $url,
-            navigation_node::NODETYPE_LEAF,
-            'myplugin',
-            'myplugin',
-            new pix_icon('t/addcontact', $strfoo)
+                        $strfoo,
+                        $url,
+                        navigation_node::NODETYPE_LEAF,
+                        'myplugin',
+                        'myplugin',
+                        new pix_icon('t/addcontact', $strfoo)
         );
         if ($PAGE->url->compare($url, URL_MATCH_BASE)) {
             $foonode->make_active();
         }
         $home->add_node($foonode);
+    }
+}
+
+function enable_grammar_grading($data) {
+    global $DB;
+
+    $grammarxl_assignment = $DB->get_record('grammarxl_assign', array('assignment' => $data->assignid));
+
+    if ($grammarxl_assignment) {
+        if (isset($data->enable)) {
+            $grammarxl_assignment->status = $data->enable;
+        }else{
+           $grammarxl_assignment->status =0;  
+        }
+        $DB->update_record('grammarxl_assign', $grammarxl_assignment);
+    } else {
+        $grammarxl_assignment = new stdClass();
+        $grammarxl_assignment->assignment = $data->assignid;
+        $grammarxl_assignment->timecreated = time();
+        $grammarxl_assignment->timemodified = time();
+         if (isset($data->enable)) {
+            $grammarxl_assignment->status = $data->enable;
+        }else{
+           $grammarxl_assignment->status =0;  
+        }
+         $DB->insert_record('grammarxl_assign',$grammarxl_assignment);
     }
 }
