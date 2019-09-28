@@ -123,3 +123,58 @@ function local_grammarxl_grade_assign() {
     grade();
 }
 
+function local_grammarxl_extend_settings_navigation($settingsnav, $context) {
+    global $CFG, $PAGE;
+    
+    // Only add this settings item on non-site course pages.
+    if (!$PAGE->course or $PAGE->course->id == 1) {
+        return;
+    }
+  
+
+   
+ 
+    if ($settingnode = $settingsnav->find('courseadmin', navigation_node::TYPE_COURSE)) {
+        $add_assign = get_string('add_assign', 'local_grammarxl');
+        $url = new moodle_url('/local/grammarxl/add_assign.php', array('id' => $PAGE->course->id));
+        $foonode = navigation_node::create(
+            $add_assign,
+            $url,
+            navigation_node::NODETYPE_LEAF,
+            'local_grammarxl',
+            'local_grammarxl',
+            new pix_icon('t/addcontact', $add_assign)
+        );
+        if ($PAGE->url->compare($url, URL_MATCH_BASE)) {
+            $foonode->make_active();
+        }
+        $settingnode->add_node($foonode);
+    }
+}
+
+
+function local_grammarxl_extend_navigation(global_navigation $navigation) {
+    global $CFG, $PAGE;
+    
+    $url = new moodle_url('/mod/assign/view.php');
+    if($PAGE->url->compare($url, URL_MATCH_BASE)){
+       
+    }
+    
+    if ($home = $navigation->find('home', global_navigation::TYPE_SETTING)) {
+        $strfoo = get_string('grade', 'local_grammarxl');
+        $url = new moodle_url('/local/grammarxl/view.php', array('id' => $PAGE->course->id));
+        $foonode = navigation_node::create(
+            $strfoo,
+            $url,
+            navigation_node::NODETYPE_LEAF,
+            'myplugin',
+            'myplugin',
+            new pix_icon('t/addcontact', $strfoo)
+        );
+        if ($PAGE->url->compare($url, URL_MATCH_BASE)) {
+            $foonode->make_active();
+        }
+        $home->add_node($foonode);
+    }
+}
