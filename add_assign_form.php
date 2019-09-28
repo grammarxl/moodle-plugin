@@ -13,7 +13,7 @@ class add_assign_form extends moodleform {
 
     protected function definition() {
         $mform = $this->_form;
-        $grammarxl_assignment = $this->get_assignment($this->_customdata['assignid']);
+        $grammarxl_assignment = $this->get_assignment($this->_customdata['cmid']);
 
         // Choice of format, with help.
         $mform->addElement('header', 'enable_grading', get_string('enable_grading', 'local_grammarxl'));

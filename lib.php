@@ -25,7 +25,7 @@ function grade() {
         echo "No new assignment submitted forgrading \n";
     }
     foreach ($assign_submissions as $assign_submission) {
-        if(!in_array($assign_submission->assignment, $grammarxl_assign)){
+        if(!array_key_exists($assign_submission->assignment, $grammarxl_assign)){
             mtrace("Grading not enable in assignment $assign_submission->assignment");
             continue;  
         }
@@ -49,8 +49,9 @@ function grade() {
             $params['uploadedFile'] = new CurlFile($file_path, $file->get_mimetype(), $file->get_filename());
             curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
             $response = curl_exec($ch);
-            if (curl_error($ch)) {
-                echo "Error in curl request";
+            $error = curl_errno($ch);
+            if ( $error ) {
+                echo "Error in curl request:  $error ";
                 continue;
             }
             $grammarxl_grade = json_decode($response);
@@ -63,7 +64,7 @@ function grade() {
                 $assign_grades->save_grade($assign_submission->userid, $grade_data);
                 save_response($course, $assign_submission, $response, $grammarxl_grade);
             } else {
-                echo "Error in grade processing $error";
+                echo "Error in grade processing $response";
             }
             echo "Assignment submission id:$assign_submission->id compltetes here\n";
         }
@@ -162,23 +163,27 @@ function local_grammarxl_extend_settings_navigation($settingsnav, $context) {
 }
 
 function local_grammarxl_extend_navigation(global_navigation $navigation) {
-    global $CFG, $PAGE;
+    global $CFG,$DB,$USER,$PAGE;
 
     $url = new moodle_url('/mod/assign/view.php');
     if (!$PAGE->url->compare($url, URL_MATCH_BASE)) {
        return; 
     }
-
-    if ($home = $navigation->find('home', global_navigation::TYPE_SETTING)) {
+   
+   if( !$DB->record_exists('grammarxl_grades',array('assignment'=> $PAGE->cm->instance,'user'=>$USER->id))){
+     return;  
+   }
+   
+    if ($home = $navigation->find($PAGE->cm->id, global_navigation::TYPE_ACTIVITY)) {
         $strfoo = get_string('grade', 'local_grammarxl');
-        $url = new moodle_url('/local/grammarxl/view.php', array('id' => $PAGE->course->id));
+        $url = new moodle_url('/local/grammarxl/view.php', array('id' => $PAGE->cm->id));
         $foonode = navigation_node::create(
                         $strfoo,
                         $url,
                         navigation_node::NODETYPE_LEAF,
-                        'myplugin',
-                        'myplugin',
-                        new pix_icon('t/addcontact', $strfoo)
+                        'local_grammarxl',
+                        'local_grammarxl',
+                        new pix_icon('i/grades', $strfoo)
         );
         if ($PAGE->url->compare($url, URL_MATCH_BASE)) {
             $foonode->make_active();
@@ -211,4 +216,9 @@ function enable_grammar_grading($data) {
         }
          $DB->insert_record('grammarxl_assign',$grammarxl_assignment);
     }
+}
+
+
+function grammarxl_grading_available($userid,$assignid){
+       
 }
