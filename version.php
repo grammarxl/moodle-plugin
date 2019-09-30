@@ -6,6 +6,6 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$plugin->version = 2019090909;
+$plugin->version = 2019090910;
 $plugin->requires = 2018112800;
 $plugin->component = 'local_grammarxl';
