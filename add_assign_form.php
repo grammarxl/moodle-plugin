@@ -23,6 +23,7 @@ class add_assign_form extends moodleform {
         $mform->setType('assignid', PARAM_INT);
         
         $mform->addElement('checkbox', 'enable', get_string('enable_grading', 'local_grammarxl'));
+        $mform->setDefault('enable', $grammarxl_assignment['status']);
         $this->add_action_buttons(true, get_string('save', 'local_grammarxl'));
     }
 
