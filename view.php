@@ -11,7 +11,8 @@ global $DB,$USER;
 $id = required_param('id', PARAM_INT);       
 list ($course, $cm) = get_course_and_cm_from_cmid($id, 'assign');
 $PAGE->set_url('/local/grammer/view.php',array('id'=>$id));
-$grammarxl_grade =  $DB->get_record('grammarxl_grades',array('assignment'=>$cm->instance,'user'=>$USER->id), '*', IGNORE_MULTIPLE);
+$sql = "SELECT * FROM {grammarxl_grades} WHERE assignment=:assignment  AND  user=:user order by  id desc limit 0,1 ";
+$grammarxl_grade =  $DB->get_record_sql($sql,array('assignment'=>$cm->instance,'user'=>$USER->id));
 if(!$grammarxl_grade){
     print_error("Grade report not found");
 }
@@ -24,14 +25,15 @@ require_course_login($course->id);
 $context = context_course::instance($course->id);
 $PAGE->set_context($context);
 
-$PAGE->set_title("GrammerXL grades");
+$PAGE->set_title("GrammarXL grades");
 $PAGE->set_pagelayout('standard');
-$PAGE->set_heading("GrammerXL grades");
+$PAGE->set_heading("GrammarXL grades");
+
 
 
 echo $OUTPUT->header();
 
-echo "<iframe src='https://tmtwebapp.azurewebsites.net/AssignmentReport/df959fe2-14ca-4657-9725-d16c39e98ebf?embedded=true' width='100%' height='900px'>";
+echo "<iframe src=$grammarxl_grade->report_url width='100%' height='900px'>";
 
 echo $OUTPUT->footer();
 
