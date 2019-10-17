@@ -14,7 +14,8 @@ function grade() {
     $start_time = time();
     $grammarxl_assign = $DB->get_records('grammarxl_assign',array('status'=>1),null,'assignment');
     $config = get_config('local_grammarxl');
-    $last_grade_time = 0;// isset($config->last_grade_success_time) ? $config->last_grade_success_time : 0;
+    $last_grade_time =  isset($config->last_grade_success_time) ? $config->last_grade_success_time : 0;
+    $success = true;
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $config->hostname);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -51,6 +52,7 @@ function grade() {
             $response = curl_exec($ch);
             $error = curl_errno($ch);
             if ( $error ) {
+                $success = false;
                 echo "Error in curl request:  $error ";
                 continue;
             }
@@ -64,23 +66,28 @@ function grade() {
                 $assign_grades->save_grade($assign_submission->userid, $grade_data);
                 save_response($course, $assign_submission, $response, $grammarxl_grade);
             } else {
+                $success = false;
                 echo "Error in grade processing $response";
             }
             echo "Assignment submission id:$assign_submission->id compltetes here\n";
         }
     }
     curl_close($ch);
-    set_config('last_grade_success_time', $start_time, 'local_grammarxl');
+    if($success){
+       set_config('last_grade_success_time', $start_time, 'local_grammarxl');  
+    }
+   
 }
 
 function get_curl_params($assign_submission, $course, $config, $site) {
-    global $CFG;
-    $params = array();
+    global $CFG,$DB;
+    $user = $DB->get_record('user',array('id'=>$assign_submission->userid),'firstname,lastname'); 
+   
     $params['Ocp-Apim-Subscription-Key'] = $config->apikey;
     $params['Ocp-Apim-Trace'] = 'true';
     $params['UserId'] = $assign_submission->userid;
-    $params['FirstName'] = 'aaa';
-    $params['LastName'] = 'bb';
+    $params['FirstName'] = $user->firstname;
+    $params['LastName'] = $user->lastname;
     $params['CourseId'] = $course->id;
     $params['CourseName'] = $course->fullname;
     $params['AssignmentId'] = $assign_submission->assignment;
