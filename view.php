@@ -10,7 +10,7 @@ require_once('lib.php');
 global $DB,$USER;
 $id = required_param('id', PARAM_INT);       
 list ($course, $cm) = get_course_and_cm_from_cmid($id, 'assign');
-$PAGE->set_url('/local/grammer/view.php',array('id'=>$id));
+$PAGE->set_url('/local/grammarxl/view.php',array('id'=>$id));
 $sql = "SELECT * FROM {grammarxl_grades} WHERE assignment=:assignment  AND  user=:user order by  id desc limit 0,1 ";
 $grammarxl_grade =  $DB->get_record_sql($sql,array('assignment'=>$cm->instance,'user'=>$USER->id));
 if(!$grammarxl_grade){
